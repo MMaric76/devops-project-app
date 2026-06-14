@@ -18,6 +18,8 @@ jobs:
       matrix:
         service: [api, frontend, worker]
     steps:
+      - name: Set lowercase owner
+        run: echo "OWNER_LC=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_ENV"
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -38,12 +40,12 @@ jobs:
 
       - name: Build image
         run: |
-          docker build -t ghcr.io/${{ github.repository_owner }}/ticketing-${{ matrix.service }}:${{ github.sha }} ${{ matrix.service }}
+          docker build -t ghcr.io/${{ env.OWNER_LC }}/ticketing-${{ matrix.service }}:${{ github.sha }} ${{ matrix.service }}
 
       - name: Trivy scan (QUALITY GATE - fails on HIGH/CRITICAL)
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ghcr.io/${{ github.repository_owner }}/ticketing-${{ matrix.service }}:${{ github.sha }}
+          image-ref: ghcr.io/${{ env.OWNER_LC }}/ticketing-${{ matrix.service }}:${{ github.sha }}
           format: table
           exit-code: "1"
           severity: HIGH,CRITICAL
@@ -60,6 +62,6 @@ jobs:
       - name: Push image (only on main, only if scan passed)
         if: github.ref == 'refs/heads/main'
         run: |
-          docker tag ghcr.io/${{ github.repository_owner }}/ticketing-${{ matrix.service }}:${{ github.sha }} ghcr.io/${{ github.repository_owner }}/ticketing-${{ matrix.service }}:latest
-          docker push ghcr.io/${{ github.repository_owner }}/ticketing-${{ matrix.service }}:${{ github.sha }}
-          docker push ghcr.io/${{ github.repository_owner }}/ticketing-${{ matrix.service }}:latest
+          docker tag ghcr.io/${{ env.OWNER_LC }}/ticketing-${{ matrix.service }}:${{ github.sha }} ghcr.io/${{ env.OWNER_LC }}/ticketing-${{ matrix.service }}:latest
+          docker push ghcr.io/${{ env.OWNER_LC }}/ticketing-${{ matrix.service }}:${{ github.sha }}
+          docker push ghcr.io/${{ env.OWNER_LC }}/ticketing-${{ matrix.service }}:latest
