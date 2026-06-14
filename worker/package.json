@@ -4,8 +4,9 @@
     "private": true,
     "main": "src/worker.js",
     "scripts": {
-        "start": "node src/worker.js",
-        "dev": "nodemon src/worker.js"
+        "start": "node src/server.js",
+        "dev": "nodemon src/server.js",
+        "test": "node test/smoke.test.js"
     },
     "dependencies": {
         "dotenv": "^16.4.5",
