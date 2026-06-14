@@ -62,7 +62,7 @@ async function connectRedis() {
 }
 
 app.get("/healthz", (_req, res) => {
-    res.status(200).json({ status: "ok", service: "api" });
+    res.status(200).json({ status: "okay", service: "api" });
 });
 
 app.get("/readyz", async (_req, res) => {
