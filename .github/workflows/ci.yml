@@ -1,0 +1,65 @@
+name: CI - build, scan, push
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-scan-push:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [api, frontend, worker]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: ${{ matrix.service }}/package-lock.json
+
+      - name: Install deps
+        working-directory: ${{ matrix.service }}
+        run: npm ci
+
+      - name: Run tests
+        working-directory: ${{ matrix.service }}
+        run: npm test
+
+      - name: Build image
+        run: |
+          docker build -t ghcr.io/${{ github.repository_owner }}/ticketing-${{ matrix.service }}:${{ github.sha }} ${{ matrix.service }}
+
+      - name: Trivy scan (QUALITY GATE - fails on HIGH/CRITICAL)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ghcr.io/${{ github.repository_owner }}/ticketing-${{ matrix.service }}:${{ github.sha }}
+          format: table
+          exit-code: "1"
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+
+      - name: Log in to GHCR
+        if: github.ref == 'refs/heads/main'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push image (only on main, only if scan passed)
+        if: github.ref == 'refs/heads/main'
+        run: |
+          docker tag ghcr.io/${{ github.repository_owner }}/ticketing-${{ matrix.service }}:${{ github.sha }} ghcr.io/${{ github.repository_owner }}/ticketing-${{ matrix.service }}:latest
+          docker push ghcr.io/${{ github.repository_owner }}/ticketing-${{ matrix.service }}:${{ github.sha }}
+          docker push ghcr.io/${{ github.repository_owner }}/ticketing-${{ matrix.service }}:latest
